@@ -155,19 +155,32 @@ public class ArvoreBPlus {
         return no;
     }
 
+    private int localizarPosicaoFilho(NoArvoreBPlus pai, NoArvoreBPlus filho) {
+        int pos = 0;
+
+        // Um pai com TL chaves possui TL + 1 filhos.
+        while (pos <= pai.getTL() && pai.getLig(pos) != filho) {
+            pos++;
+        }
+
+        return pos;
+    }
+
     private void redistribuir_concatenar(NoArvoreBPlus no, int m) {
         NoArvoreBPlus pai = buscarPai(no, no.getInfo(0)),
                       irmaEsq = null, irmaDir = null;
         PilhaObj<NoArvoreBPlus> pilha = new PilhaObj<NoArvoreBPlus>();
+        boolean concatenou;
 
         pilha.push(pai);
         pilha.push(no);
         while (!pilha.isEmpty()) {
             no = pilha.pop();
             pai = pilha.pop();
+            concatenou = false;
 
             if (pai != no) {
-                int posPai = pai.procurarPosicaoFolha(no.getInfo(0));
+                int posPai = localizarPosicaoFilho(pai, no);
                 if (posPai > 0)
                     irmaEsq = pai.getLig(posPai - 1);
                 else
@@ -204,6 +217,7 @@ public class ArvoreBPlus {
                         pai.setPos(irmaDir.getPos(0), posPai);
                     }
                     else { // Se não der para redistribuir, concatenamos nós
+                        concatenou = true;
                         if (irmaEsq != null) {  // irmaEsq <-- no
                             pai.remanejarExclusao(posPai - 1);
                             pai.setTL(pai.getTL() - 1);
@@ -269,6 +283,7 @@ public class ArvoreBPlus {
                         irmaDir.setTL(irmaDir.getTL() - 1);
                     }
                     else { // Se não der para redistribuir, concatenamos nós
+                        concatenou = true;
                         if (irmaEsq != null) {  // irmaEsq <-- no
                             irmaEsq.setInfo(pai.getInfo(posPai - 1), irmaEsq.getTL());
                             irmaEsq.setPos(pai.getPos(posPai - 1), irmaEsq.getTL());
@@ -284,11 +299,6 @@ public class ArvoreBPlus {
                                 irmaEsq.setTL(irmaEsq.getTL() + 1);
                             }
                             irmaEsq.setLig(no.getLig(no.getTL()), irmaEsq.getTL());
-
-                            irmaEsq.setProx(no.getProx());
-                            if (no.getProx() != null) {
-                                irmaEsq.getProx().setAnt(irmaEsq);
-                            }
                         }
                         else if (irmaDir != null) { // no <-- irmaDir
                             no.setInfo(pai.getInfo(posPai), no.getTL());
@@ -305,33 +315,30 @@ public class ArvoreBPlus {
                                 no.setTL(no.getTL() + 1);
                             }
                             no.setLig(irmaDir.getLig(irmaDir.getTL()), no.getTL());
-
-                            no.setProx(irmaDir.getProx());
-                            if (irmaDir.getProx() != null) {
-                                irmaDir.getProx().setAnt(no);
-                            }
                         }
                     }
                 }
             }
 
-            // Se houve concatenação, precisamos realizar algumas verificações adicionais
-            if (pai != raiz && pai.getTL() < m) {
-                // Se não estivermos na raiz, precisamos repetir o processo
-                no = pai;
-                pai = buscarPai(no, no.getInfo(0));
-                pilha.push(pai);
-                pilha.push(no);
-            }
-            else if (pai == raiz && pai.getTL() == 0) {
-                // Neste caso, precisamos mover a raiz devido à falta de elementos
-                if (irmaEsq != null) {
-                    // Se movemos os itens de "no" para "irmaEsq"
-                    raiz = irmaEsq;
+            if (concatenou) {
+                // Se houve concatenação, precisamos realizar algumas verificações adicionais
+                if (pai != raiz && pai.getTL() < m) {
+                    // Se não estivermos na raiz, precisamos repetir o processo
+                    no = pai;
+                    pai = buscarPai(no, no.getInfo(0));
+                    pilha.push(pai);
+                    pilha.push(no);
                 }
-                else {
-                    // Se movemos os itens de "irmaDir" para "no"
-                    raiz = no;
+                else if (pai == raiz && pai.getTL() == 0) {
+                    // Neste caso, precisamos mover a raiz devido à falta de elementos
+                    if (irmaEsq != null) {
+                        // Se movemos os itens de "no" para "irmaEsq"
+                        raiz = irmaEsq;
+                    }
+                    else {
+                        // Se movemos os itens de "irmaDir" para "no"
+                        raiz = no;
+                    }
                 }
             }
         }
@@ -348,6 +355,30 @@ public class ArvoreBPlus {
             if (pos < no.getTL() && no.getInfo(pos) == info) {
                 no.remanejarExclusao(pos);
                 no.setTL(no.getTL() - 1);
+
+                NoArvoreBPlus filho = no;
+                NoArvoreBPlus pai = buscarPai(filho, filho.getInfo(0));
+
+                while (pai != filho) {
+                    int posFilho = localizarPosicaoFilho(pai, filho);
+
+                    if (posFilho > 0) {
+                        // Este separador representa o menor valor da subárvore.
+                        NoArvoreBPlus folha = filho;
+
+                        while (!folha.isFolha()) {
+                            folha = folha.getLig(0);
+                        }
+
+                        pai.setInfo(folha.getInfo(0), posFilho - 1);
+                        pai.setPos(folha.getPos(0), posFilho - 1);
+                        break;
+                    }
+
+                    // O filho é o primeiro: a alteração relevante pode estar mais acima.
+                    filho = pai;
+                    pai = buscarPai(filho, filho.getInfo(0));
+                }
 
                 if (no.getTL() < m) {
                     if (no != raiz) {
