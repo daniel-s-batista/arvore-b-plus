@@ -1,5 +1,6 @@
 package ArvoreBPlus;
 
+import PilhaInt.PilhaInt;
 import PilhaObj.PilhaObj;
 
 public class ArvoreBPlus {
@@ -368,7 +369,7 @@ public class ArvoreBPlus {
         NoArvoreBPlus aux = raiz;
         int posAux;
         PilhaObj<NoArvoreBPlus> pilha = new PilhaObj<NoArvoreBPlus>();
-        PilhaObj<Integer> pilhaInt = new PilhaObj<Integer>();
+        PilhaInt pilhaInt = new PilhaInt();
 
         // Inicialização para entrar no loop
         pilha.push(aux);
